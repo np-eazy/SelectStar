@@ -6,11 +6,11 @@ document.addEventListener('keydown', (event) => {
     }
   });
   
-  function highlightElement(event) {
+  function highlightElement(event: any) {
     event.target.style.border = '2px solid red'; // Highlight element
   }
   
-  function selectElement(event) {
+  function selectElement(event: any) {
     event.preventDefault();
     event.target.style.border = ''; // Remove highlight
     document.body.style.cursor = ''; // Reset cursor
@@ -22,4 +22,4 @@ document.addEventListener('keydown', (event) => {
   }
   
   // Remember to add cleanup code to remove event listeners if needed
-  
+  export {};
