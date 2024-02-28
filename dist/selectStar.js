@@ -1,14 +1,15 @@
 "use strict";
-function isPartOfTable(el) {
-    return (el instanceof HTMLDListElement ||
-        el instanceof HTMLDataListElement ||
-        el instanceof HTMLOListElement ||
-        el instanceof HTMLTableElement ||
-        el instanceof HTMLTableRowElement ||
-        el instanceof HTMLTableSectionElement);
-}
-function reduceTable(el) {
+function reduceTable(el, callback) {
     var table = el.closest('table');
+    if (true) {
+        var columnNames = Array.from(table.querySelectorAll('thead th')).map(function (th) { return th.textContent.trim(); });
+        // Extract table entries
+        var rows = table.querySelectorAll('tbody tr');
+        var tableEntries = Array.from(rows).map(function (row) {
+            return Array.from(row.querySelectorAll('td')).map(function (td) { return td.textContent.trim(); });
+        });
+        console.log(columnNames, tableEntries);
+    }
     return table;
 }
 function modifyColorOfHoveredElement(event) {

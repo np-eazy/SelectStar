@@ -1,5 +1,15 @@
-function reduceTable(el) {
+function reduceTable(el, callback) {
   const table = el.closest('table');
+  if (true) {
+    const columnNames = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+
+    // Extract table entries
+    const rows = table.querySelectorAll('tbody tr');
+    const tableEntries = Array.from(rows).map(row => 
+      Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
+    );
+    console.log(columnNames, tableEntries);
+  }
   return table;
 }
 
