@@ -1,21 +1,31 @@
+let currentSelectedTable = null; // Holds the current selected table
+let currColumn = null;
+let currEntries = null;
 function reduceTable(el, callback) {
   const table = el.closest('table');
-  if (callback) {
-    const columnNames = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-    // Extract table entries
-    const rows = table.querySelectorAll('tbody tr');
-    const tableEntries = Array.from(rows).map(row => 
-      Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
-    );
-    callback(columnNames, tableEntries);
-    // console.log(columnNames, tableEntries);
+  if (table !== currentSelectedTable) {
+    currentSelectedTable = table; // Update the current selected table
+    
+    if (callback && table) {
+      currColumn = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+      currEntries = Array.from(table.querySelectorAll('tbody tr')).map(row => 
+        Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
+      );
+      callback(currColumn, currEntries);
+    }
+    if (!table) {
+      console.log("EXITING: ", currColumn);
+      currColumn = null;
+      currEntries = null;
+      revertColorOfElement(currentSelectedTable);
+    }
+    return table; // Return the new table
   }
-  return table;
+  return null; // Return null if it's the same table or no table is found
 }
 
 function modifyColorOfHoveredElement(event) {
-  const el = reduceTable(event.target, (columnNames, tableEntries) => console.log("ENTERING: ", columnNames, tableEntries)); // The element being hovered over
-
+  const el = reduceTable(event.target, (columnNames, tableEntries) => console.log("ENTERING: ", columnNames, tableEntries));
   if (el && el instanceof HTMLElement) {
     // Store original colors
     el.originalBackgroundColor = window.getComputedStyle(el).backgroundColor;
@@ -33,14 +43,12 @@ function modifyColorOfHoveredElement(event) {
     }
     const border = el.originalBorder;
     if (border) {
-      el.style.border = isPartOfTable(el) ? '1px solid green' : '1px solid black';
+      el.style.border = '1px solid green';
     }
   }
 }
 
-
-function revertColorOfElement(event) {
-  const el = reduceTable(event.target,  (columnNames, tableEntries) => console.log("EXITING: ", columnNames)); // The element being hovered over
+function revertColorOfElement(el) {
   if (el && el instanceof HTMLElement) {
   // Revert to original colors
     if (el.originalBackgroundColor) {

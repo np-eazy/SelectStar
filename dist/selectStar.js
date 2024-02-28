@@ -1,20 +1,30 @@
 "use strict";
+var currentSelectedTable = null; // Holds the current selected table
+var currColumn = null;
+var currEntries = null;
 function reduceTable(el, callback) {
     var table = el.closest('table');
-    if (callback) {
-        var columnNames = Array.from(table.querySelectorAll('thead th')).map(function (th) { return th.textContent.trim(); });
-        // Extract table entries
-        var rows = table.querySelectorAll('tbody tr');
-        var tableEntries = Array.from(rows).map(function (row) {
-            return Array.from(row.querySelectorAll('td')).map(function (td) { return td.textContent.trim(); });
-        });
-        callback(columnNames, tableEntries);
-        // console.log(columnNames, tableEntries);
+    if (table !== currentSelectedTable) {
+        currentSelectedTable = table; // Update the current selected table
+        if (callback && table) {
+            currColumn = Array.from(table.querySelectorAll('thead th')).map(function (th) { return th.textContent.trim(); });
+            currEntries = Array.from(table.querySelectorAll('tbody tr')).map(function (row) {
+                return Array.from(row.querySelectorAll('td')).map(function (td) { return td.textContent.trim(); });
+            });
+            callback(currColumn, currEntries);
+        }
+        if (!table) {
+            console.log("EXITING: ", currColumn);
+            currColumn = null;
+            currEntries = null;
+            revertColorOfElement(currentSelectedTable);
+        }
+        return table; // Return the new table
     }
-    return table;
+    return null; // Return null if it's the same table or no table is found
 }
 function modifyColorOfHoveredElement(event) {
-    var el = reduceTable(event.target, function (columnNames, tableEntries) { return console.log("ENTERING: ", columnNames, tableEntries); }); // The element being hovered over
+    var el = reduceTable(event.target, function (columnNames, tableEntries) { return console.log("ENTERING: ", columnNames, tableEntries); });
     if (el && el instanceof HTMLElement) {
         // Store original colors
         el.originalBackgroundColor = window.getComputedStyle(el).backgroundColor;
@@ -31,12 +41,11 @@ function modifyColorOfHoveredElement(event) {
         }
         var border = el.originalBorder;
         if (border) {
-            el.style.border = isPartOfTable(el) ? '1px solid green' : '1px solid black';
+            el.style.border = '1px solid green';
         }
     }
 }
-function revertColorOfElement(event) {
-    var el = reduceTable(event.target, function (columnNames, tableEntries) { return console.log("EXITING: ", columnNames); }); // The element being hovered over
+function revertColorOfElement(el) {
     if (el && el instanceof HTMLElement) {
         // Revert to original colors
         if (el.originalBackgroundColor) {
