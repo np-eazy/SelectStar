@@ -2,14 +2,16 @@
 var currentSelectedTable = null; // Holds the current selected table
 var currColumn = null;
 var currEntries = null;
+var prevEntries = null;
 var DIV_NAME = "12346";
 function handleSelection(event) {
     var table = event.target.closest('table');
     if (table !== currentSelectedTable) {
         if (!table) {
-            console.log("DE-SELECTING");
             currColumn = null;
             currEntries = null;
+            if (currentSelectedTable)
+                restoreTable(currentSelectedTable, prevEntries);
             deselectStyle(currentSelectedTable);
             var overlayDiv = document.getElementById(DIV_NAME);
             if (overlayDiv) {
@@ -19,10 +21,11 @@ function handleSelection(event) {
         currentSelectedTable = table;
         if (table) {
             currColumn = Array.from(table.querySelectorAll('thead th')).map(function (th) { return th.textContent.trim(); });
-            currEntries = Array.from(table.querySelectorAll('tbody tr')).map(function (row) {
-                return Array.from(row.querySelectorAll('td')).map(function (td) { return td.textContent.trim(); });
-            });
-            console.log("SELECTED: ", currColumn, currEntries);
+            // currEntries = Array.from(table.querySelectorAll('tbody tr')).map(row => 
+            //   Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
+            // );
+            currEntries = Array.from(table.querySelectorAll('tbody tr'));
+            prevEntries = currEntries;
             selectStyle(table);
             // sortTable(table);
             // Create the main overlay div
@@ -82,32 +85,63 @@ function selectStyle(el) {
     el.style.setProperty('border-width', '2px', 'important');
     el.style.setProperty('border-color', 'green', 'important');
 }
-function sortTable(el, index) {
+function sortTable(el, index, substring) {
     if (index === void 0) { index = 0; }
-    console.log(index);
+    if (substring === void 0) { substring = ""; }
     if (!(el && el.tagName === 'TABLE'))
         return;
     var tbody = el.querySelector('tbody');
     if (!tbody)
         return;
-    var rows = Array.from(tbody.querySelectorAll('tr'));
+    // Assuming currEntries now stores tr elements directly
+    var rows = currEntries.map(function (tr) { return tr.cloneNode(true); });
+    if (substring !== "") {
+        rows = rows.filter(function (row) { var _a; return (_a = row.querySelectorAll('td')[index]) === null || _a === void 0 ? void 0 : _a.textContent.trim().toLowerCase().includes(substring.toLowerCase()); });
+    }
     rows.sort(function (a, b) {
-        var aValue = a.cells[index].textContent.trim().toLowerCase();
-        var bValue = b.cells[index].textContent.trim().toLowerCase();
+        var _a, _b;
+        var aValue = (_a = a.querySelectorAll('td')[index]) === null || _a === void 0 ? void 0 : _a.textContent.trim().toLowerCase();
+        var bValue = (_b = b.querySelectorAll('td')[index]) === null || _b === void 0 ? void 0 : _b.textContent.trim().toLowerCase();
         return aValue.localeCompare(bValue);
     });
-    rows.forEach(function (row) { return tbody.appendChild(row); });
+    // Clear the tbody before appending sorted rows
+    tbody.innerHTML = '';
+    rows.forEach(function (row) { return tbody.appendChild(row); }); // Append all items that match the criteria
 }
 function filterPanel(table, overlayDiv, i) {
     var columnDiv = document.createElement('div');
     columnDiv.style.cssText = "flex: 1; border: 1px solid black; background-color: white; height: 200px; margin: 0 4px;";
     overlayDiv.style.transition = 'background-color 0.3s'; // Smooth transition for the hover effect
+    // Create an input field
+    var inputField = document.createElement('input');
+    // Set input field properties
+    inputField.type = 'text';
+    inputField.placeholder = 'Filter...';
+    inputField.style.cssText = 'width: 100%; margin-bottom: 10px;'; // Style the input field
+    // Append the input field to the columnDiv
+    columnDiv.appendChild(inputField);
     var j = i;
     columnDiv.onmouseover = function () {
         this.style.backgroundColor = 'gray';
-        sortTable(table, j);
+        console.log(inputField.value);
+        sortTable(table, j, "");
     };
     columnDiv.onmouseout = function () { this.style.backgroundColor = 'white'; };
     return columnDiv;
+}
+function restoreTable(table, prevEntries) {
+    if (!table || !prevEntries)
+        return;
+    var tbody = table.querySelector('tbody');
+    if (!tbody)
+        return;
+    // Clear current tbody
+    tbody.innerHTML = '';
+    // Repopulate tbody with prevEntries, which are tr elements
+    prevEntries.forEach(function (tr) {
+        // Clone the tr element to avoid issues with reappending elements already in the DOM
+        var clonedTr = tr.cloneNode(true);
+        tbody.appendChild(clonedTr);
+    });
 }
 document.addEventListener('mousedown', handleSelection);

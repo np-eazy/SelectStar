@@ -1,14 +1,16 @@
 let currentSelectedTable = null; // Holds the current selected table
 let currColumn = null;
 let currEntries = null;
+let prevEntries = null;
+
 const DIV_NAME = "12346";
 function handleSelection(event) {
   const table = event.target.closest('table');
   if (table !== currentSelectedTable) {
     if (!table) {
-      console.log("DE-SELECTING");
       currColumn = null;
       currEntries = null;
+      if (currentSelectedTable) restoreTable(currentSelectedTable, prevEntries);
       deselectStyle(currentSelectedTable);
 
       const overlayDiv = document.getElementById(DIV_NAME);
@@ -19,10 +21,12 @@ function handleSelection(event) {
     currentSelectedTable = table;
     if (table) {
       currColumn = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-      currEntries = Array.from(table.querySelectorAll('tbody tr')).map(row => 
-        Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
-      );
-      console.log("SELECTED: ", currColumn, currEntries);
+      // currEntries = Array.from(table.querySelectorAll('tbody tr')).map(row => 
+      //   Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
+      // );
+      currEntries = Array.from(table.querySelectorAll('tbody tr'));
+
+      prevEntries = currEntries;
       selectStyle(table);
       // sortTable(table);
     
@@ -89,19 +93,25 @@ function selectStyle(el) {
   el.style.setProperty('border-color', 'green', 'important');
 }
 
-function sortTable(el, index=0) {
-  console.log(index);
+function sortTable(el, index=0, substring="") {
   if (!(el && el.tagName === 'TABLE')) return;
   let tbody = el.querySelector('tbody');
   if (!tbody) return;
 
-  let rows = Array.from(tbody.querySelectorAll('tr'));
+  // Assuming currEntries now stores tr elements directly
+  let rows = currEntries.map(tr => tr.cloneNode(true));
+  if (substring !== "") {
+    rows = rows.filter(row => row.querySelectorAll('td')[index]?.textContent.trim().toLowerCase().includes(substring.toLowerCase()));
+  }
   rows.sort((a, b) => {
-    const aValue = a.cells[index].textContent.trim().toLowerCase();
-    const bValue = b.cells[index].textContent.trim().toLowerCase();
+    const aValue = a.querySelectorAll('td')[index]?.textContent.trim().toLowerCase();
+    const bValue = b.querySelectorAll('td')[index]?.textContent.trim().toLowerCase();
     return aValue.localeCompare(bValue);
   });
-  rows.forEach(row => tbody.appendChild(row));
+
+  // Clear the tbody before appending sorted rows
+  tbody.innerHTML = '';
+  rows.forEach(row => tbody.appendChild(row)); // Append all items that match the criteria
 }
 
 
@@ -110,18 +120,42 @@ function filterPanel(table, overlayDiv, i) {
   const columnDiv = document.createElement('div');
   columnDiv.style.cssText = `flex: 1; border: 1px solid black; background-color: white; height: 200px; margin: 0 4px;`;
   overlayDiv.style.transition = 'background-color 0.3s'; // Smooth transition for the hover effect
+
+  // Create an input field
+  const inputField = document.createElement('input');
+  // Set input field properties
+  inputField.type = 'text';
+  inputField.placeholder = 'Filter...';
+  inputField.style.cssText = 'width: 100%; margin-bottom: 10px;'; // Style the input field
+
+  // Append the input field to the columnDiv
+  columnDiv.appendChild(inputField);
+
   const j = i;
   columnDiv.onmouseover = function() { 
-      this.style.backgroundColor = 'gray';
-      sortTable(table, j);
+    this.style.backgroundColor = 'gray';
+    console.log(inputField.value);
+    sortTable(table, j, "");
   };
   columnDiv.onmouseout = function() { this.style.backgroundColor = 'white'; };
   return columnDiv;
 }
 
 
+function restoreTable(table, prevEntries) {
+  if (!table || !prevEntries) return;
+  const tbody = table.querySelector('tbody');
+  if (!tbody) return;
 
+  // Clear current tbody
+  tbody.innerHTML = '';
 
-
+  // Repopulate tbody with prevEntries, which are tr elements
+  prevEntries.forEach(tr => {
+    // Clone the tr element to avoid issues with reappending elements already in the DOM
+    const clonedTr = tr.cloneNode(true);
+    tbody.appendChild(clonedTr);
+  });
+}
 
 document.addEventListener('mousedown', handleSelection);
