@@ -1,17 +1,24 @@
 let currentSelectedTable = null; // Holds the current selected table
 let currColumn = null;
 let currEntries = null;
+let sortDxn = null;
+
 let substringFilters = null;
+let llmFilters = null;
+
 let prevEntries = null;
+let allFilters = new Map();
+let allLLMFilters = new Map();
 
 const DIV_NAME = "12346";
 function handleSelection(event) {
   const table = event.target.closest('table');
   if (table !== currentSelectedTable) {
     if (!table) {
+      allFilters.set(currColumn.toString(), substringFilters);
       currColumn = null;
       currEntries = null;
-      substringFilters = null;
+      sortDxn = null;
       if (currentSelectedTable) restoreTable(currentSelectedTable, prevEntries);
       deselectStyle(currentSelectedTable);
 
@@ -19,18 +26,26 @@ function handleSelection(event) {
       if (overlayDiv) {
         overlayDiv.parentNode.removeChild(overlayDiv);
       }
+      disconnectObserver();
     }
     currentSelectedTable = table;
     if (table) {
+      observeTableChanges()
       currColumn = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
       // currEntries = Array.from(table.querySelectorAll('tbody tr')).map(row => 
       //   Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
       // );
       currEntries = Array.from(table.querySelectorAll('tbody tr'));
-      substringFilters = currColumn.map((x) => "");
+      sortDxn = currColumn.map((x) => false);
+      if (!allFilters.get(currColumn.toString())) {
+        allFilters.set(currColumn.toString(), currColumn.map((x) => ""));
+        allLLMFilters.set(currColumn.toString(), currColumn.map((x) => ""));
+      }
+      substringFilters = allFilters.get(currColumn.toString());
+      llmFilters = allLLMFilters.get(currColumn.toString());
       prevEntries = currEntries;
       selectStyle(table);
-      // sortTable(table);
+      sortTable(table);
     
       // Create the main overlay div
       const overlayDiv = document.createElement('div');
@@ -75,6 +90,43 @@ function handleSelection(event) {
   }
 }
 
+// Function to update currEntries based on the current table
+function updateCurrEntries() {
+  if (currentSelectedTable) {
+    currEntries = Array.from(currentSelectedTable.querySelectorAll('tbody tr'));
+  }
+}
+
+// MutationObserver callback function
+const tableMutationCallback = function(mutationsList, observer) {
+  // For simplicity, update currEntries on any mutation. 
+  // You might want to filter mutations for more specific changes.
+  updateCurrEntries();
+};
+
+// Create a MutationObserver instance and pass the callback function
+const observer = new MutationObserver(tableMutationCallback);
+
+// Function to start observing the current selected table
+function observeTableChanges() {
+  if (currentSelectedTable) {
+    // Configuration object for the observer
+    const config = { childList: true, subtree: true };
+
+    // Start observing the table body for configured mutations
+    const tbody = currentSelectedTable.querySelector('tbody');
+    if (tbody) {
+      observer.observe(tbody, config);
+    }
+  }
+}
+
+// Function to stop observing changes (e.g., when a new table is selected)
+function disconnectObserver() {
+  observer.disconnect();
+}
+
+
 function deselectStyle(el) {
   if (!el) return; // Guard clause to ensure el is not null
   el.style.setProperty('border-style', el.originalBorderStyle || '', 'important');
@@ -95,7 +147,7 @@ function selectStyle(el) {
   el.style.setProperty('border-color', 'green', 'important');
 }
 
-function sortTable(el, index=0) {
+function sortTable(el, index=-1, reverse=false) {
   if (!(el && el.tagName === 'TABLE')) return;
   let tbody = el.querySelector('tbody');
   if (!tbody) return;
@@ -104,25 +156,34 @@ function sortTable(el, index=0) {
   let rows = currEntries.map(tr => tr.cloneNode(true));
   for (var k = 0; k < substringFilters.length; k++) {    
     if (substringFilters[k] !== "") {
-      const substring = substringFilters[k].split(' -');
-      rows = rows.filter(row => {
-        return row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring[0].toLowerCase())
-      });
-      if (substring[1]) {
-        rows = rows.filter(row => {
-          return !row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring[1].toLowerCase())
-        });
+      const substrings = substringFilters[k].split(' ');
+      console.log(substrings);
+      for (const substring of substrings) {
+        if (substring[0] == '-') {
+          rows = rows.filter(row => {
+            return !row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring.slice(1, substring.length).toLowerCase())
+          });
+        } else {
+          rows = rows.filter(row => {
+            return row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring.toLowerCase())
+          });
+        }
       }
     }
   }
-  rows.sort((a, b) => {
-    const aValue = a.querySelectorAll('td')[index]?.textContent.trim().toLowerCase();
-    const bValue = b.querySelectorAll('td')[index]?.textContent.trim().toLowerCase();
-    return aValue.localeCompare(bValue);
-  });
-
+  if (index != -1) {
+    rows.sort((a, b) => {
+      const aValue = a.querySelectorAll('td')[index]?.textContent.trim().toLowerCase();
+      const bValue = b.querySelectorAll('td')[index]?.textContent.trim().toLowerCase();
+      return aValue.localeCompare(bValue);
+    });
+  }
+  
   // Clear the tbody before appending sorted rows
   tbody.innerHTML = '';
+  if (reverse) {
+    rows = rows.reverse();
+  }
   rows.forEach(row => tbody.appendChild(row)); // Append all items that match the criteria
 }
 
@@ -130,34 +191,72 @@ function sortTable(el, index=0) {
 function filterPanel(table, overlayDiv, i) {
   // Make sure you pass in a const for i!
   const columnDiv = document.createElement('div');
-  columnDiv.style.cssText = `flex: 1; border: 1px solid black; background-color: white; height: 200px; margin: 0 4px;`;
-  overlayDiv.style.transition = 'background-color 0.3s'; // Smooth transition for the hover effect
+  columnDiv.style.cssText = `background-color: white; height: 250px; margin: 10px; margin-right: 0px; position: sticky; top: 0; z-index: 1000; background-color: inherit;`;
+
+  const columnName = currColumn[i];
+
+  // Create an h3 element for the column name
+  const columnTitle = document.createElement('p');
+  columnTitle.textContent = columnName;
+  columnTitle.style.cssText = 'text-align: center; margin-bottom: 10px'; // Center the column name
+
+  // Append the h3 element to the columnDiv
+  columnDiv.appendChild(columnTitle);
 
   // Create an input field
-  const inputField = document.createElement('input');
+  const filterField = document.createElement('input');  
   // Set input field properties
-  inputField.type = 'text';
-  inputField.placeholder = 'Filter...';
-  inputField.style.cssText = 'width: 100%; margin-bottom: 10px;'; // Style the input field
-
-  // Append the input field to the columnDiv
-  columnDiv.appendChild(inputField);
-
-  // Use the 'input' event to trigger sorting whenever the input value changes
-  inputField.addEventListener('input', function() {
+  filterField.type = 'text';
+  filterField.placeholder = 'Keyphrase Filter...';
+  filterField.style.cssText = 'width: 100%; padding: 10px;'; // Style the input field
+  filterField.value = substringFilters[i];
+  filterField.addEventListener('input', function() {
     // Call sortTable with the current value of the input field
     substringFilters[i] = this.value;
     sortTable(table, i);
   });
+  columnDiv.appendChild(filterField);
 
-  // Adjusted event listeners for styling purposes (optional)
-  columnDiv.onmouseover = function() { 
-    sortTable(table, i, this.value);
-    this.style.backgroundColor = 'gray';
-  };
-  columnDiv.onmouseout = function() { 
-    this.style.backgroundColor = 'white'; 
-  };
+  const llmField = document.createElement('input');
+  llmField.type = 'textarea';
+  llmField.placeholder = 'AI Filter...';
+  llmField.style.cssText = 'width: 100%; height: 50%;'; // Style the input field
+  llmField.value = llmFilters[i];
+  llmField.addEventListener('input', function() {
+    // Call sortTable with the current value of the input field
+    llmFilters[i] = this.value;
+  });
+  // Append the input field to the columnDiv
+  columnDiv.appendChild(llmField);  
+
+  // Create a button
+  const filterButton = document.createElement('button');
+  filterButton.textContent = 'Sort & Filter';
+  filterButton.style.cssText = 'margin: 10px; margin-right: 0px; background-color: #000000; color: white; padding: 10px;'; // Style the button
+
+  // Append the button to the columnDiv
+  columnDiv.appendChild(filterButton);
+
+  // Attach a click event listener to the button
+  filterButton.addEventListener('click', function() {
+    // Call sortTable with the current value of the input field when the button is clicked
+    sortTable(table, i, sortDxn[i]);
+  });
+
+    // Create the sort and reverse button
+    const sortReverseButton = document.createElement('button');
+    sortReverseButton.textContent = 'Reverse';
+    sortReverseButton.style.cssText = 'margin: 10px; border: 1px solid black; color: black; padding: 10px;'; // Style the button
+  
+    // Append the sort and reverse button to the columnDiv
+    columnDiv.appendChild(sortReverseButton);
+  
+    // Attach a click event listener to the sort and reverse button
+    sortReverseButton.addEventListener('click', function() {
+      // Assuming sortTable can sort, you might need a separate function to reverse
+      sortDxn[i] = !sortDxn[i];
+      sortTable(table, i, sortDxn[i]);
+    });
 
   return columnDiv;
 }
