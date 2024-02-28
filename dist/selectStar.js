@@ -2,6 +2,7 @@
 var currentSelectedTable = null; // Holds the current selected table
 var currColumn = null;
 var currEntries = null;
+var substringFilters = null;
 var prevEntries = null;
 var DIV_NAME = "12346";
 function handleSelection(event) {
@@ -10,6 +11,7 @@ function handleSelection(event) {
         if (!table) {
             currColumn = null;
             currEntries = null;
+            substringFilters = null;
             if (currentSelectedTable)
                 restoreTable(currentSelectedTable, prevEntries);
             deselectStyle(currentSelectedTable);
@@ -25,6 +27,7 @@ function handleSelection(event) {
             //   Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
             // );
             currEntries = Array.from(table.querySelectorAll('tbody tr'));
+            substringFilters = currColumn.map(function (x) { return ""; });
             prevEntries = currEntries;
             selectStyle(table);
             // sortTable(table);
@@ -85,18 +88,23 @@ function selectStyle(el) {
     el.style.setProperty('border-width', '2px', 'important');
     el.style.setProperty('border-color', 'green', 'important');
 }
-function sortTable(el, index, substring) {
+function sortTable(el, index) {
     if (index === void 0) { index = 0; }
-    if (substring === void 0) { substring = ""; }
     if (!(el && el.tagName === 'TABLE'))
         return;
     var tbody = el.querySelector('tbody');
     if (!tbody)
         return;
-    // Assuming currEntries now stores tr elements directly
+    // TODO: use caching to make this faster if we know the new operation strictly removes currently displayed items
     var rows = currEntries.map(function (tr) { return tr.cloneNode(true); });
-    if (substring !== "") {
-        rows = rows.filter(function (row) { var _a; return (_a = row.querySelectorAll('td')[index]) === null || _a === void 0 ? void 0 : _a.textContent.trim().toLowerCase().includes(substring.toLowerCase()); });
+    var _loop_1 = function () {
+        var substring = substringFilters[k];
+        if (substring !== "") {
+            rows = rows.filter(function (row) { var _a; return (_a = row.querySelectorAll('td')[k]) === null || _a === void 0 ? void 0 : _a.textContent.trim().toLowerCase().includes(substring.toLowerCase()); });
+        }
+    };
+    for (var k = 0; k < substringFilters.length; k++) {
+        _loop_1();
     }
     rows.sort(function (a, b) {
         var _a, _b;
@@ -109,6 +117,7 @@ function sortTable(el, index, substring) {
     rows.forEach(function (row) { return tbody.appendChild(row); }); // Append all items that match the criteria
 }
 function filterPanel(table, overlayDiv, i) {
+    // Make sure you pass in a const for i!
     var columnDiv = document.createElement('div');
     columnDiv.style.cssText = "flex: 1; border: 1px solid black; background-color: white; height: 200px; margin: 0 4px;";
     overlayDiv.style.transition = 'background-color 0.3s'; // Smooth transition for the hover effect
@@ -120,13 +129,20 @@ function filterPanel(table, overlayDiv, i) {
     inputField.style.cssText = 'width: 100%; margin-bottom: 10px;'; // Style the input field
     // Append the input field to the columnDiv
     columnDiv.appendChild(inputField);
-    var j = i;
+    // Use the 'input' event to trigger sorting whenever the input value changes
+    inputField.addEventListener('input', function () {
+        // Call sortTable with the current value of the input field
+        substringFilters[i] = this.value;
+        sortTable(table, i);
+    });
+    // Adjusted event listeners for styling purposes (optional)
     columnDiv.onmouseover = function () {
+        sortTable(table, i, this.value);
         this.style.backgroundColor = 'gray';
-        console.log(inputField.value);
-        sortTable(table, j, "");
     };
-    columnDiv.onmouseout = function () { this.style.backgroundColor = 'white'; };
+    columnDiv.onmouseout = function () {
+        this.style.backgroundColor = 'white';
+    };
     return columnDiv;
 }
 function restoreTable(table, prevEntries) {

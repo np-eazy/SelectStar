@@ -1,6 +1,7 @@
 let currentSelectedTable = null; // Holds the current selected table
 let currColumn = null;
 let currEntries = null;
+let substringFilters = null;
 let prevEntries = null;
 
 const DIV_NAME = "12346";
@@ -10,6 +11,7 @@ function handleSelection(event) {
     if (!table) {
       currColumn = null;
       currEntries = null;
+      substringFilters = null;
       if (currentSelectedTable) restoreTable(currentSelectedTable, prevEntries);
       deselectStyle(currentSelectedTable);
 
@@ -25,7 +27,7 @@ function handleSelection(event) {
       //   Array.from(row.querySelectorAll('td')).map(td => td.textContent.trim())
       // );
       currEntries = Array.from(table.querySelectorAll('tbody tr'));
-
+      substringFilters = currColumn.map((x) => "");
       prevEntries = currEntries;
       selectStyle(table);
       // sortTable(table);
@@ -93,15 +95,18 @@ function selectStyle(el) {
   el.style.setProperty('border-color', 'green', 'important');
 }
 
-function sortTable(el, index=0, substring="") {
+function sortTable(el, index=0) {
   if (!(el && el.tagName === 'TABLE')) return;
   let tbody = el.querySelector('tbody');
   if (!tbody) return;
 
-  // Assuming currEntries now stores tr elements directly
+  // TODO: use caching to make this faster if we know the new operation strictly removes currently displayed items
   let rows = currEntries.map(tr => tr.cloneNode(true));
-  if (substring !== "") {
-    rows = rows.filter(row => row.querySelectorAll('td')[index]?.textContent.trim().toLowerCase().includes(substring.toLowerCase()));
+  for (var k = 0; k < substringFilters.length; k++) {
+    const substring = substringFilters[k];
+    if (substring !== "") {
+      rows = rows.filter(row => row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring.toLowerCase()));
+    }
   }
   rows.sort((a, b) => {
     const aValue = a.querySelectorAll('td')[index]?.textContent.trim().toLowerCase();
@@ -115,8 +120,8 @@ function sortTable(el, index=0, substring="") {
 }
 
 
-
 function filterPanel(table, overlayDiv, i) {
+  // Make sure you pass in a const for i!
   const columnDiv = document.createElement('div');
   columnDiv.style.cssText = `flex: 1; border: 1px solid black; background-color: white; height: 200px; margin: 0 4px;`;
   overlayDiv.style.transition = 'background-color 0.3s'; // Smooth transition for the hover effect
@@ -131,16 +136,24 @@ function filterPanel(table, overlayDiv, i) {
   // Append the input field to the columnDiv
   columnDiv.appendChild(inputField);
 
-  const j = i;
+  // Use the 'input' event to trigger sorting whenever the input value changes
+  inputField.addEventListener('input', function() {
+    // Call sortTable with the current value of the input field
+    substringFilters[i] = this.value;
+    sortTable(table, i);
+  });
+
+  // Adjusted event listeners for styling purposes (optional)
   columnDiv.onmouseover = function() { 
+    sortTable(table, i, this.value);
     this.style.backgroundColor = 'gray';
-    console.log(inputField.value);
-    sortTable(table, j, "");
   };
-  columnDiv.onmouseout = function() { this.style.backgroundColor = 'white'; };
+  columnDiv.onmouseout = function() { 
+    this.style.backgroundColor = 'white'; 
+  };
+
   return columnDiv;
 }
-
 
 function restoreTable(table, prevEntries) {
   if (!table || !prevEntries) return;
