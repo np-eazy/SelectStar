@@ -1,19 +1,20 @@
 "use strict";
 function reduceTable(el, callback) {
     var table = el.closest('table');
-    if (true) {
+    if (callback) {
         var columnNames = Array.from(table.querySelectorAll('thead th')).map(function (th) { return th.textContent.trim(); });
         // Extract table entries
         var rows = table.querySelectorAll('tbody tr');
         var tableEntries = Array.from(rows).map(function (row) {
             return Array.from(row.querySelectorAll('td')).map(function (td) { return td.textContent.trim(); });
         });
-        console.log(columnNames, tableEntries);
+        callback(columnNames, tableEntries);
+        // console.log(columnNames, tableEntries);
     }
     return table;
 }
 function modifyColorOfHoveredElement(event) {
-    var el = reduceTable(event.target); // The element being hovered over
+    var el = reduceTable(event.target, function (columnNames, tableEntries) { return console.log("ENTERING: ", columnNames, tableEntries); }); // The element being hovered over
     if (el && el instanceof HTMLElement) {
         // Store original colors
         el.originalBackgroundColor = window.getComputedStyle(el).backgroundColor;
@@ -22,7 +23,7 @@ function modifyColorOfHoveredElement(event) {
         var backgroundColor = el.originalBackgroundColor;
         if (backgroundColor && backgroundColor.startsWith('rgb')) {
             console.log(el);
-            el.style.backgroundColor = isPartOfTable(el) ? 'green' : 'white';
+            el.style.backgroundColor = 'green';
         }
         var color = el.originalColor;
         if (color && color.startsWith('rgb')) {
@@ -35,7 +36,7 @@ function modifyColorOfHoveredElement(event) {
     }
 }
 function revertColorOfElement(event) {
-    var el = reduceTable(event.target); // The element being hovered over
+    var el = reduceTable(event.target, function (columnNames, tableEntries) { return console.log("EXITING: ", columnNames); }); // The element being hovered over
     if (el && el instanceof HTMLElement) {
         // Revert to original colors
         if (el.originalBackgroundColor) {
