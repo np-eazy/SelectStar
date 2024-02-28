@@ -1,8 +1,12 @@
-function isColorNotWhite(color) {
-  // Assuming color is in the format "rgb(r, g, b)"
-  const rgb = color.match(/\d+/g).map(Number);
-  // Check if color is not white
-  return !(rgb[0] === 255 && rgb[1] === 255 && rgb[2] === 255);
+function isPartOfTable(el) {
+  return (
+    el instanceof HTMLDListElement ||
+    el instanceof HTMLDataListElement || 
+    el instanceof HTMLOListElement ||
+    el instanceof HTMLTableElement ||
+    el instanceof HTMLTableRowElement ||
+    el instanceof HTMLTableSectionElement
+  );
 }
 
 function modifyColorOfHoveredElement(event) {
@@ -11,17 +15,23 @@ function modifyColorOfHoveredElement(event) {
   // Store original colors
   el.originalBackgroundColor = window.getComputedStyle(el).backgroundColor;
   el.originalColor = window.getComputedStyle(el).color;
+  el.originalBorder = window.getComputedStyle(el).border;
 
   const backgroundColor = el.originalBackgroundColor;
-  if (backgroundColor && backgroundColor.startsWith('rgb') && isColorNotWhite(backgroundColor) && el instanceof HTMLElement) {
-    el.style.backgroundColor = 'black';
+  if (backgroundColor && backgroundColor.startsWith('rgb') && el instanceof HTMLElement) {
+    console.log(el);
+    el.style.backgroundColor = isPartOfTable(el) ? 'green' : 'white';
   }
-
   const color = el.originalColor;
-  if (color && color.startsWith('rgb') && isColorNotWhite(color) && el instanceof HTMLElement) {
+  if (color && color.startsWith('rgb') && el instanceof HTMLElement) {
     el.style.color = 'black';
   }
+  const border = el.originalBorder;
+  if (border && el instanceof HTMLElement) {
+    el.style.border = isPartOfTable(el) ? '1px solid green' : '1px solid black';
+  }
 }
+
 
 function revertColorOfElement(event) {
   const el = event.target; // The element being un-hovered
@@ -32,6 +42,9 @@ function revertColorOfElement(event) {
   }
   if (el.originalColor && el instanceof HTMLElement) {
     el.style.color = el.originalColor;
+  }
+  if (el.originalBorder && el instanceof HTMLElement) {
+    el.style.border = el.originalBorder;
   }
 }
 
