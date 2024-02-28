@@ -24,21 +24,30 @@ function handleSelection(event) {
             });
             console.log("SELECTED: ", currColumn, currEntries);
             selectStyle(table);
-            sortTable(table);
-            // Create a new div element
+            // sortTable(table);
+            // Create the main overlay div
             var overlayDiv = document.createElement('div');
-            // Set the div's styles
-            overlayDiv.style.cssText = 'border: 1px solid black; background-color: white; height: 200px; width: 100%;';
-            // Set a unique ID for the div
+            overlayDiv.style.cssText = 'display: flex; justify-content: space-between; padding: 0 4px;';
+            // Set a unique ID for the main overlay div
             overlayDiv.id = DIV_NAME;
+            // Calculate the number of columns
+            var colCount = currColumn.length;
+            // Create and append a div for each column
+            for (var i = 0; i < colCount; i++) {
+                // Append the column div to the overlay div
+                overlayDiv.appendChild(filterPanel(table, overlayDiv, i));
+            }
+            // Adjust the first and last column div margin
+            if (overlayDiv.firstChild)
+                overlayDiv.firstChild.style.marginLeft = '0';
+            if (overlayDiv.lastChild)
+                overlayDiv.lastChild.style.marginRight = '0';
             // Create a new tr element
             var overlayTr = document.createElement('tr');
-            // Create a new td element
+            // Create a new td element with colspan to span all columns
             var overlayTd = document.createElement('td');
-            // Set the colspan attribute to match the number of columns
-            var colCount = table.querySelectorAll('thead th').length || table.querySelectorAll('tbody tr:first-child td').length;
             overlayTd.setAttribute('colspan', colCount.toString());
-            // Append the div to the td, and the td to the tr
+            // Append the main overlay div to the td, and the td to the tr
             overlayTd.appendChild(overlayDiv);
             overlayTr.appendChild(overlayTd);
             // Find the table's header (thead) element
@@ -73,7 +82,9 @@ function selectStyle(el) {
     el.style.setProperty('border-width', '2px', 'important');
     el.style.setProperty('border-color', 'green', 'important');
 }
-function sortTable(el) {
+function sortTable(el, index) {
+    if (index === void 0) { index = 0; }
+    console.log(index);
     if (!(el && el.tagName === 'TABLE'))
         return;
     var tbody = el.querySelector('tbody');
@@ -81,10 +92,22 @@ function sortTable(el) {
         return;
     var rows = Array.from(tbody.querySelectorAll('tr'));
     rows.sort(function (a, b) {
-        var aValue = a.cells[0].textContent.trim().toLowerCase();
-        var bValue = b.cells[0].textContent.trim().toLowerCase();
+        var aValue = a.cells[index].textContent.trim().toLowerCase();
+        var bValue = b.cells[index].textContent.trim().toLowerCase();
         return aValue.localeCompare(bValue);
     });
     rows.forEach(function (row) { return tbody.appendChild(row); });
+}
+function filterPanel(table, overlayDiv, i) {
+    var columnDiv = document.createElement('div');
+    columnDiv.style.cssText = "flex: 1; border: 1px solid black; background-color: white; height: 200px; margin: 0 4px;";
+    overlayDiv.style.transition = 'background-color 0.3s'; // Smooth transition for the hover effect
+    var j = i;
+    columnDiv.onmouseover = function () {
+        this.style.backgroundColor = 'gray';
+        sortTable(table, j);
+    };
+    columnDiv.onmouseout = function () { this.style.backgroundColor = 'white'; };
+    return columnDiv;
 }
 document.addEventListener('mousedown', handleSelection);
