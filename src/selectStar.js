@@ -102,10 +102,17 @@ function sortTable(el, index=0) {
 
   // TODO: use caching to make this faster if we know the new operation strictly removes currently displayed items
   let rows = currEntries.map(tr => tr.cloneNode(true));
-  for (var k = 0; k < substringFilters.length; k++) {
-    const substring = substringFilters[k];
-    if (substring !== "") {
-      rows = rows.filter(row => row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring.toLowerCase()));
+  for (var k = 0; k < substringFilters.length; k++) {    
+    if (substringFilters[k] !== "") {
+      const substring = substringFilters[k].split(' -');
+      rows = rows.filter(row => {
+        return row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring[0].toLowerCase())
+      });
+      if (substring[1]) {
+        rows = rows.filter(row => {
+          return !row.querySelectorAll('td')[k]?.textContent.trim().toLowerCase().includes(substring[1].toLowerCase())
+        });
+      }
     }
   }
   rows.sort((a, b) => {

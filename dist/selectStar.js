@@ -98,9 +98,18 @@ function sortTable(el, index) {
     // TODO: use caching to make this faster if we know the new operation strictly removes currently displayed items
     var rows = currEntries.map(function (tr) { return tr.cloneNode(true); });
     var _loop_1 = function () {
-        var substring = substringFilters[k];
-        if (substring !== "") {
-            rows = rows.filter(function (row) { var _a; return (_a = row.querySelectorAll('td')[k]) === null || _a === void 0 ? void 0 : _a.textContent.trim().toLowerCase().includes(substring.toLowerCase()); });
+        if (substringFilters[k] !== "") {
+            var substring_1 = substringFilters[k].split(' -');
+            rows = rows.filter(function (row) {
+                var _a;
+                return (_a = row.querySelectorAll('td')[k]) === null || _a === void 0 ? void 0 : _a.textContent.trim().toLowerCase().includes(substring_1[0].toLowerCase());
+            });
+            if (substring_1[1]) {
+                rows = rows.filter(function (row) {
+                    var _a;
+                    return !((_a = row.querySelectorAll('td')[k]) === null || _a === void 0 ? void 0 : _a.textContent.trim().toLowerCase().includes(substring_1[1].toLowerCase()));
+                });
+            }
         }
     };
     for (var k = 0; k < substringFilters.length; k++) {
